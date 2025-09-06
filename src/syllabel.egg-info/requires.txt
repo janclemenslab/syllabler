@@ -1,0 +1,16 @@
+PySide6
+librosa
+numpy
+pandas
+matplotlib
+
+[:python_version >= "3.9"]
+colorcet
+
+[propose]
+scikit-learn
+hdbscan
+umap-learn
+pillow
+tqdm
+scipy

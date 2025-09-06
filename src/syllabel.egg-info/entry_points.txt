@@ -1,0 +1,2 @@
+[console_scripts]
+syllabel = syllabel.app:main

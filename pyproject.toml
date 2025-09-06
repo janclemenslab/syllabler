@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "syllabel"
+version = "0.1.0"
+description = "Interactive spectrogram viewer and syllable labeler"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{ name = "Jan Clemens", email = "clemensjan@gmail.com" }]
+dependencies = [
+  "PySide6",
+  "librosa",
+  "numpy",
+  "pandas",
+  "matplotlib",
+  "colorcet; python_version >= '3.9'",
+]
+
+[project.optional-dependencies]
+propose = [
+  "scikit-learn",
+  "hdbscan",
+  "umap-learn",
+  "pillow",
+  "tqdm",
+  "scipy",
+]
+
+[project.scripts]
+syllabel = "syllabel.app:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+syllabel = ["icon.png"]
