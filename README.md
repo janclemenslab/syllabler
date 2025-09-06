@@ -1,6 +1,6 @@
 # `syllabler` Song Syllable Labeler
 
-![](src/syllabel/icon.png)
+<img src="src/syllabel/icon.png" alt="bird" width="200"/>
 
 Interactive tool to view spectrograms for a folder of WAV files and label syllables by time span. Labels are colored consistently and can be reassigned in bulk.
 
