@@ -16,16 +16,13 @@ dependencies = [
   "pandas",
   "matplotlib",
   "colorcet; python_version >= '3.9'",
-]
-
-[project.optional-dependencies]
-propose = [
   "scikit-learn",
   "hdbscan",
   "umap-learn",
   "pillow",
   "tqdm",
   "scipy",
+  "rapidfuzz",
 ]
 
 [project.scripts]

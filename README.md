@@ -11,7 +11,6 @@ Interactive tool to view spectrograms for a folder of WAV files and label syllab
 ```bash
 conda create -n song-syllables python -y
 conda activate song-syllables
-pip install PySide6 librosa matplotlib numpy pandas colorcet rapidfuzz umap-learn scikit-learn hdbscan
 git clone https://github.com/janclemenslab/syllabler.git
 cd syllabler
 pip install -e .
