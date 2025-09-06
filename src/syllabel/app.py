@@ -7,7 +7,6 @@ from typing import Callable, Dict, List, Optional, Set, Tuple
 
 import numpy as np
 import re
-import matplotlib
 from matplotlib import colors as mcolors
 import matplotlib.cm as cm
 
@@ -96,7 +95,9 @@ def load_annotations(path: Optional[str]) -> List[Syllable]:
     return sylls
 
 
-def fft_spectrogram(y: np.ndarray, sr: int, n_fft: int = 512, hop_length: int = 64) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def fft_spectrogram(
+    y: np.ndarray, sr: int, n_fft: int = 512, hop_length: int = 64
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     S = np.abs(librosa.stft(y, n_fft=n_fft, hop_length=hop_length))
     S_db = librosa.amplitude_to_db(S, ref=np.max)
     freqs = librosa.fft_frequencies(sr=sr, n_fft=n_fft)
@@ -108,7 +109,18 @@ def fft_spectrogram(y: np.ndarray, sr: int, n_fft: int = 512, hop_length: int = 
 class SpectrogramRow(QtWidgets.QGraphicsView):
     selection_changed = QtCore.Signal()
 
-    def __init__(self, wav_path: str, annotations: List[Syllable], color_map: Dict[str, Tuple[float, float, float]], parent=None, y_limits: Optional[Tuple[float, float]] = None, x_limits: Optional[Tuple[float, float]] = None, show_xticks: bool = True, default_name_fn: Optional[Callable[[], str]] = None, time_offset: float = 0.0):
+    def __init__(
+        self,
+        wav_path: str,
+        annotations: List[Syllable],
+        color_map: Dict[str, Tuple[float, float, float]],
+        parent=None,
+        y_limits: Optional[Tuple[float, float]] = None,
+        x_limits: Optional[Tuple[float, float]] = None,
+        show_xticks: bool = True,
+        default_name_fn: Optional[Callable[[], str]] = None,
+        time_offset: float = 0.0,
+    ):
         super().__init__(parent)
         self.setObjectName("SpectrogramRowView")
         self.setRenderHints(QtGui.QPainter.RenderHint.Antialiasing | QtGui.QPainter.RenderHint.SmoothPixmapTransform)
@@ -161,24 +173,24 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
     def _build_view(self):
         # Title
         title_item = self.scene.addSimpleText(os.path.basename(self.wav_path))
-        title_item.setBrush(QtGui.QBrush(QtGui.QColor('white')))
+        title_item.setBrush(QtGui.QBrush(QtGui.QColor("white")))
         title_item.setPos(0.0, -12.0)  # small offset above if visible
 
         # Load audio + compute spectrogram image
         y, sr = librosa.load(self.wav_path, sr=None, mono=True)
         S_db, freqs, times = fft_spectrogram(y, sr)
-        duration = float(times[-1]) if times.size > 0 else float(len(y))/float(sr)
+        duration = float(times[-1]) if times.size > 0 else float(len(y)) / float(sr)
         self._duration = duration
         # y limits in kHz
         if self.y_limits is not None:
             ymax_hz = float(self.y_limits[1])
         else:
-            ymax_hz = float(freqs[-1]) if freqs.size > 0 else sr/2.0
+            ymax_hz = float(freqs[-1]) if freqs.size > 0 else sr / 2.0
         self._ymax_khz = ymax_hz / 1000.0
 
         # Normalize S_db to 0..1 and map to turbo
         S_norm = (S_db - S_db.min()) / max(1e-9, (S_db.max() - S_db.min()))
-        cmap = cm.get_cmap('turbo')
+        cmap = cm.get_cmap("turbo")
         rgba = (cmap(S_norm)[:, :, :3] * 255).astype(np.uint8)
         h, w, _ = rgba.shape
         # Create QImage and QPixmap
@@ -206,7 +218,7 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
                     max(0.0, syll.stop - syll.start),
                     y1 - y0,
                 ),
-                pen=QtGui.QPen(QtGui.QColor('white'), 0.0),
+                pen=QtGui.QPen(QtGui.QColor("white"), 0.0),
                 brush=QtGui.QBrush(QtGui.QColor(255, 255, 255, 60)),
             )
             rect_item.setZValue(1.0)
@@ -224,7 +236,7 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
             # Position label along the top boundary, slightly inset from the left
             txt_item.setPos(x_left + 0.02 * width, y0 - 0.02 * (y1 - y0))
             # Colored boundary lines aligned to rect edges (top at y0, bottom at y1)
-            base_pen = QtGui.QPen(QtGui.QColor('white'))
+            base_pen = QtGui.QPen(QtGui.QColor("white"))
             base_pen.setWidthF(1.2)
             base_pen.setCapStyle(QtCore.Qt.PenCapStyle.FlatCap)
             top_line = self.scene.addLine(x_left, y0, x_right, y0, base_pen)
@@ -265,16 +277,16 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
             self.viewport().setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
             event.accept()
             return
-        if key == QtCore.Qt.Key.Key_Up and hasattr(win, '_zoom_in'):
+        if key == QtCore.Qt.Key.Key_Up and hasattr(win, "_zoom_in"):
             win._zoom_in()
             handled = True
-        elif key == QtCore.Qt.Key.Key_Down and hasattr(win, '_zoom_out'):
+        elif key == QtCore.Qt.Key.Key_Down and hasattr(win, "_zoom_out"):
             win._zoom_out()
             handled = True
-        elif key == QtCore.Qt.Key.Key_Left and hasattr(win, '_pan_left'):
+        elif key == QtCore.Qt.Key.Key_Left and hasattr(win, "_pan_left"):
             win._pan_left()
             handled = True
-        elif key == QtCore.Qt.Key.Key_Right and hasattr(win, '_pan_right'):
+        elif key == QtCore.Qt.Key.Key_Right and hasattr(win, "_pan_right"):
             win._pan_right()
             handled = True
         if handled:
@@ -288,12 +300,12 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
         pd = event.pixelDelta()
         dx = ad.x() if not ad.isNull() else pd.x()
         dy = ad.y() if not ad.isNull() else pd.y()
-        mods = event.modifiers() if hasattr(event, 'modifiers') else QtCore.Qt.KeyboardModifier.NoModifier
+        mods = event.modifiers() if hasattr(event, "modifiers") else QtCore.Qt.KeyboardModifier.NoModifier
         win = self.window()
 
         # Horizontal pan when horizontal wheel is used, or Shift+vertical wheel
         horiz_pan = (dx != 0) or ((mods & QtCore.Qt.KeyboardModifier.ShiftModifier) and dy != 0)
-        if hasattr(win, '_pan_left') and hasattr(win, '_pan_right') and horiz_pan:
+        if hasattr(win, "_pan_left") and hasattr(win, "_pan_right") and horiz_pan:
             base = dx if dx != 0 else dy
             steps = int(base / 120) if base != 0 else 0
             if steps == 0:
@@ -313,7 +325,7 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
         face = self.color_map.get(syll.name, (1.0, 1.0, 1.0))
         r, g, b = [int(255 * c) for c in face]
         alpha = 90 if syll.selected else 60
-        pen_color = QtGui.QColor('yellow') if syll.selected else QtGui.QColor('white')
+        pen_color = QtGui.QColor("yellow") if syll.selected else QtGui.QColor("white")
         syll.patch.setBrush(QtGui.QBrush(QtGui.QColor(r, g, b, alpha)))
         syll.patch.setPen(QtGui.QPen(pen_color, 0.0))
         line_pen = QtGui.QPen(QtGui.QColor(r, g, b))
@@ -401,11 +413,11 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
                 if d_left <= tol and d_left < best_d:
                     best_d = d_left
                     best_s = s0
-                    best_edge = 'resize_left'
+                    best_edge = "resize_left"
                 if d_right <= tol and d_right < best_d:
                     best_d = d_right
                     best_s = s0
-                    best_edge = 'resize_right'
+                    best_edge = "resize_right"
             if best_s is not None and best_edge is not None:
                 self._drag_syll = best_s
                 self._drag_mode = best_edge
@@ -415,7 +427,7 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
             # Otherwise, move if clicking inside a syllable
             s = self._find_syllable_at_time(t_scene)
             if s is not None:
-                self._drag_mode = 'move'
+                self._drag_mode = "move"
                 self._drag_move_offset = t_file - s.start
                 self._drag_active = True
                 self._drag_syll = s
@@ -428,7 +440,14 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
         # Selection / lasso (non edit)
         if not self.edit_mode and event.button() == QtCore.Qt.MouseButton.LeftButton:
             mods = QtWidgets.QApplication.keyboardModifiers()
-            add_mode = bool(mods & (QtCore.Qt.KeyboardModifier.ShiftModifier | QtCore.Qt.KeyboardModifier.MetaModifier | QtCore.Qt.KeyboardModifier.ControlModifier))
+            add_mode = bool(
+                mods
+                & (
+                    QtCore.Qt.KeyboardModifier.ShiftModifier
+                    | QtCore.Qt.KeyboardModifier.MetaModifier
+                    | QtCore.Qt.KeyboardModifier.ControlModifier
+                )
+            )
             s = self._find_syllable_at_time(t_scene)
             if s is not None:
                 if add_mode:
@@ -437,14 +456,14 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
                     self.selection_changed.emit()
                 else:
                     win = self.window()
-                    if hasattr(win, '_clear_selection'):
+                    if hasattr(win, "_clear_selection"):
                         win._clear_selection()
                     s.selected = True
                     self._update_patch_style(s)
                     self.selection_changed.emit()
                 return
             win = self.window()
-            if not add_mode and hasattr(win, '_clear_selection'):
+            if not add_mode and hasattr(win, "_clear_selection"):
                 win._clear_selection()
             self._drag_active = True
             self._drag_x0 = t_scene
@@ -452,7 +471,9 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
             y0, y1 = self._y_limits_khz()
             if self._drag_rect_item is None:
                 r = QtCore.QRectF(self._drag_x0, y0, 0.0, y1 - y0)
-                self._drag_rect_item = self.scene.addRect(r, pen=QtGui.QPen(QtGui.QColor(255, 255, 0, 200), 0.0), brush=QtGui.QBrush(QtGui.QColor(255, 255, 0, 40)))
+                self._drag_rect_item = self.scene.addRect(
+                    r, pen=QtGui.QPen(QtGui.QColor(255, 255, 0, 200), 0.0), brush=QtGui.QBrush(QtGui.QColor(255, 255, 0, 40))
+                )
             else:
                 self._drag_rect_item.setRect(QtCore.QRectF(self._drag_x0, y0, 0.0, y1 - y0))
             return
@@ -500,13 +521,13 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
             tmin, tmax = self._x_limits_seconds()
             min_w = 1e-3
             x = t_file
-            if self._drag_mode == 'resize_left':
+            if self._drag_mode == "resize_left":
                 new_start = max(tmin, min(x, s.stop - min_w))
                 s.start = float(new_start)
-            elif self._drag_mode == 'resize_right':
+            elif self._drag_mode == "resize_right":
                 new_stop = min(tmax, max(x, s.start + min_w))
                 s.stop = float(new_stop)
-            elif self._drag_mode == 'move':
+            elif self._drag_mode == "move":
                 width = s.stop - s.start
                 new_start = x - self._drag_move_offset
                 new_start = max(tmin, min(new_start, tmax - width))
@@ -556,7 +577,7 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
         any_changed = False
         for s in self.annotations:
             prev = s.selected
-            overl = (s.start < t1f and s.stop > t0f)
+            overl = s.start < t1f and s.stop > t0f
             if self._lasso_add:
                 # Union-add overlapped
                 s.selected = s.selected or overl
@@ -601,7 +622,11 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
         if isinstance(s.patch, QtWidgets.QGraphicsRectItem):
             y0, y1 = self._y_limits_khz()
             s.patch.setRect(QtCore.QRectF(s.start + self.time_offset, y0, max(0.0, s.stop - s.start), y1 - y0))
-        if isinstance(s.label_artist, QtWidgets.QGraphicsSimpleTextItem) or isinstance(s.top_line, QtWidgets.QGraphicsLineItem) or isinstance(s.bottom_line, QtWidgets.QGraphicsLineItem):
+        if (
+            isinstance(s.label_artist, QtWidgets.QGraphicsSimpleTextItem)
+            or isinstance(s.top_line, QtWidgets.QGraphicsLineItem)
+            or isinstance(s.bottom_line, QtWidgets.QGraphicsLineItem)
+        ):
             # Derive positions from rect to ensure perfect alignment
             if isinstance(s.patch, QtWidgets.QGraphicsRectItem):
                 r = s.patch.rect()
@@ -632,9 +657,11 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
         y_min, y_max = y0, y1
         default_name = self.default_name_fn() if self.default_name_fn is not None else ""
         # t0 is file time; place at scene time t0 + offset
-        rect_item = self.scene.addRect(QtCore.QRectF(t0 + self.time_offset, y_min, 1e-6, y_max - y_min),
-                                       pen=QtGui.QPen(QtGui.QColor('white'), 0.0),
-                                       brush=QtGui.QBrush(QtGui.QColor(255, 255, 255, 60)))
+        rect_item = self.scene.addRect(
+            QtCore.QRectF(t0 + self.time_offset, y_min, 1e-6, y_max - y_min),
+            pen=QtGui.QPen(QtGui.QColor("white"), 0.0),
+            brush=QtGui.QBrush(QtGui.QColor(255, 255, 255, 60)),
+        )
         text_item = self.scene.addSimpleText(default_name)
         f = text_item.font()
         f.setPointSizeF(8.0)
@@ -645,11 +672,20 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
         # boundary lines (top at y_min, bottom at y_max); initial length 0, will update on motion
         r0 = rect_item.rect()
         left = r0.left()
-        top_line = self.scene.addLine(left, y_min, left, y_min, QtGui.QPen(QtGui.QColor('white'), 1.0))
-        bottom_line = self.scene.addLine(left, y_max, left, y_max, QtGui.QPen(QtGui.QColor('white'), 1.0))
+        top_line = self.scene.addLine(left, y_min, left, y_min, QtGui.QPen(QtGui.QColor("white"), 1.0))
+        bottom_line = self.scene.addLine(left, y_max, left, y_max, QtGui.QPen(QtGui.QColor("white"), 1.0))
         top_line.setZValue(2.0)
         bottom_line.setZValue(2.0)
-        syll = Syllable(start=float(t0), stop=float(t0) + 1e-6, name=default_name, patch=rect_item, label_artist=text_item, selected=True, top_line=top_line, bottom_line=bottom_line)
+        syll = Syllable(
+            start=float(t0),
+            stop=float(t0) + 1e-6,
+            name=default_name,
+            patch=rect_item,
+            label_artist=text_item,
+            selected=True,
+            top_line=top_line,
+            bottom_line=bottom_line,
+        )
         self.annotations.append(syll)
         self._update_patch_style(syll)
         self._new_syll = syll
@@ -823,7 +859,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.rows: List[SpectrogramRow] = []
         for idx, (wav, sylls) in enumerate(rows_data):
-            show_xticks = (idx == len(rows_data) - 1)
+            show_xticks = idx == len(rows_data) - 1
             row = SpectrogramRow(
                 wav,
                 sylls,
@@ -860,9 +896,9 @@ class MainWindow(QtWidgets.QMainWindow):
             count = len(self.rows)
         except Exception:
             count = 0
-        spacing = self.rows_layout.spacing() if hasattr(self, 'rows_layout') else 0
+        spacing = self.rows_layout.spacing() if hasattr(self, "rows_layout") else 0
         total = 0
-        for r in getattr(self, 'rows', []):
+        for r in getattr(self, "rows", []):
             h = r.minimumHeight() or r.sizeHint().height()
             total += max(0, h)
         if count > 1:
@@ -982,12 +1018,17 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _propose_labels(self):
         if make_proposals is None:
-            QtWidgets.QMessageBox.warning(self, "Unavailable", "Propose Labels requires syllabel.propose_labels.make_proposals and its dependencies installed.")
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Unavailable",
+                "Propose Labels requires syllabel.propose_labels.make_proposals and its dependencies installed.",
+            )
             return
         wav_folder = self.songs_dir
         import tempfile
+
         # Determine annotations CSV to pass in
-        ann_csv_path = getattr(self, 'global_annotations_csv_path', None)
+        ann_csv_path = getattr(self, "global_annotations_csv_path", None)
         temp_file: Optional[str] = None
         if not ann_csv_path:
             # Create a temporary combined CSV from current annotations
@@ -995,12 +1036,14 @@ class MainWindow(QtWidgets.QMainWindow):
             for row in self.rows:
                 base = os.path.basename(row.wav_path)
                 for s in row.annotations:
-                    records.append({
-                        "filename": base,
-                        "start_seconds": float(s.start),
-                        "stop_seconds": float(s.stop),
-                        "name": s.name,
-                    })
+                    records.append(
+                        {
+                            "filename": base,
+                            "start_seconds": float(s.start),
+                            "stop_seconds": float(s.stop),
+                            "name": s.name,
+                        }
+                    )
             df = pd.DataFrame.from_records(records, columns=["filename", "start_seconds", "stop_seconds", "name"])
             # Write to a temporary file
             ntf = tempfile.NamedTemporaryFile(delete=False, suffix="_annotations.csv")
@@ -1048,10 +1091,10 @@ class MainWindow(QtWidgets.QMainWindow):
             if not isinstance(df, pd.DataFrame):
                 return
             cols = {c.lower(): c for c in df.columns}
-            file_col = cols.get('filename') or cols.get('file')
-            start_col = cols.get('start_seconds') or cols.get('start')
-            stop_col = cols.get('stop_seconds') or cols.get('stop')
-            name_col = cols.get('name')
+            file_col = cols.get("filename") or cols.get("file")
+            start_col = cols.get("start_seconds") or cols.get("start")
+            stop_col = cols.get("stop_seconds") or cols.get("stop")
+            name_col = cols.get("name")
             if not file_col or not start_col or not stop_col or not name_col:
                 return
             rows_by_file = {}
@@ -1065,7 +1108,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     continue
                 t0 = float(r[start_col])
                 t1 = float(r[stop_col])
-                new_name = str(r[name_col]) if pd.notna(r[name_col]) else ''
+                new_name = str(r[name_col]) if pd.notna(r[name_col]) else ""
                 for row in rows_by_file.get(base, []):
                     best = None
                     best_err = 1e9
@@ -1096,9 +1139,9 @@ class MainWindow(QtWidgets.QMainWindow):
         if name not in self.name_colors:
             next_color = distinct_colors(len(self.name_colors) + 1)[-1]
             self.name_colors[name] = next_color
-            if hasattr(self, 'legend'):
+            if hasattr(self, "legend"):
                 self.legend.update()
-            for r in getattr(self, 'rows', []):
+            for r in getattr(self, "rows", []):
                 r.refresh_colors()
 
     def _next_autoname(self) -> str:
@@ -1201,10 +1244,10 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception:
             return result
         cols = {c.lower(): c for c in df.columns}
-        file_col = cols.get('filename') or cols.get('file')
-        start_col = cols.get('start_seconds') or cols.get('start')
-        stop_col = cols.get('stop_seconds') or cols.get('stop')
-        name_col = cols.get('name')
+        file_col = cols.get("filename") or cols.get("file")
+        start_col = cols.get("start_seconds") or cols.get("start")
+        stop_col = cols.get("stop_seconds") or cols.get("stop")
+        name_col = cols.get("name")
         if not file_col or not start_col or not stop_col:
             return result
         for _, row in df.iterrows():
@@ -1216,7 +1259,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 stop = float(row[stop_col])
             except Exception:
                 continue
-            name = str(row[name_col]) if name_col and pd.notna(row[name_col]) else ''
+            name = str(row[name_col]) if name_col and pd.notna(row[name_col]) else ""
             s = Syllable(start=start, stop=stop, name=name)
             result.setdefault(fname, []).append(s)
         return result
@@ -1265,12 +1308,14 @@ class MainWindow(QtWidgets.QMainWindow):
             for row in self.rows:
                 base = os.path.basename(row.wav_path)
                 for s in row.annotations:
-                    records.append({
-                        "filename": base,
-                        "start_seconds": float(s.start),
-                        "stop_seconds": float(s.stop),
-                        "name": s.name,
-                    })
+                    records.append(
+                        {
+                            "filename": base,
+                            "start_seconds": float(s.start),
+                            "stop_seconds": float(s.stop),
+                            "name": s.name,
+                        }
+                    )
             df = pd.DataFrame.from_records(records, columns=["filename", "start_seconds", "stop_seconds", "name"])
             df.to_csv(path, index=False, float_format="%.9f")
         except Exception as e:
@@ -1281,6 +1326,7 @@ class MainWindow(QtWidgets.QMainWindow):
 def distinct_colors(n: int) -> List[Tuple[float, float, float]]:
     try:
         import colorcet as cc  # type: ignore
+
         palette = list(cc.glasbey_dark)
         rgb = [mcolors.to_rgb(c) for c in palette[: max(1, n)]]
         return [tuple(map(float, c)) for c in rgb[:n]]
@@ -1296,9 +1342,15 @@ def distinct_colors(n: int) -> List[Tuple[float, float, float]]:
 
 def main():
     import argparse
+
     parser = argparse.ArgumentParser(description="Song Syllable Labeler")
     parser.add_argument("--songs", dest="songs", required=True, help="Path to songs directory containing WAVs (required)")
-    parser.add_argument("--annotations", dest="annotations", default=None, help="Optional path to a global CSV (filename,start_seconds,stop_seconds,name). Defaults to <songs>/<basename(songs)>.csv if omitted.")
+    parser.add_argument(
+        "--annotations",
+        dest="annotations",
+        default=None,
+        help="Optional path to a global CSV (filename,start_seconds,stop_seconds,name). Defaults to <songs>/<basename(songs)>.csv if omitted.",
+    )
     args = parser.parse_args()
 
     app = QtWidgets.QApplication(sys.argv)

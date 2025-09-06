@@ -11,7 +11,7 @@ Interactive tool to view spectrograms for a folder of WAV files and label syllab
 ```bash
 conda create -n song-syllables python -y
 conda activate song-syllables
-pip install PySide6 librosa matplotlib numpy pandas colorcet rapidfuzz
+pip install PySide6 librosa matplotlib numpy pandas colorcet rapidfuzz umap-learn scikit-learn hdbscan
 git clone https://github.com/janclemenslab/syllabler.git
 cd syllabler
 pip install -e .
@@ -33,7 +33,7 @@ syllabel --songs PATH_TO_SONGS [--annotations PATH_TO_GLOBAL_CSV]
 - Select: Click a colored syllable block to toggle selection.
 - Assign labels: Use "Assign Auto-Name" or "Assign Custom Name…".
 - Propose labels: Click "Propose Labels" to run an automatic labeling algorithm over all files in the songs folder and populate names.
- 
+
 - Edit mode [E]:
   - Left‑click empty space to add a syllable: first click sets the start (cursor changes to crosshair), second click sets the stop. Right‑click or ESC cancels while adding.
   - Drag edges to resize (cursor shows horizontal resize near boundaries).
