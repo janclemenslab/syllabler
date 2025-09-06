@@ -33,7 +33,7 @@ syllabel --songs PATH_TO_SONGS [--annotations PATH_TO_GLOBAL_CSV]
 - Select: Click a colored syllable block to toggle selection.
 - Assign labels: Use "Assign Auto-Name" or "Assign Custom Name…".
 - Propose labels: Click "Propose Labels" to run an automatic labeling algorithm over all files in the songs folder and populate names.
-- Align songs: Click "Align Songs (XCorr)" to align all spectrogram rows horizontally by maximizing the cross‑correlation of their energy envelopes. You can still pan/zoom afterward.
+ 
 - Edit mode [E]:
   - Left‑click empty space to add a syllable: first click sets the start (cursor changes to crosshair), second click sets the stop. Right‑click or ESC cancels while adding.
   - Drag edges to resize (cursor shows horizontal resize near boundaries).

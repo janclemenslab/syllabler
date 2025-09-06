@@ -154,11 +154,7 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
         self._qimage_ref: Optional[QtGui.QImage] = None  # keep ref to buffer
         self._ymax_khz: float = 1.0
         self._duration: float = 0.0
-        # Cached spectrogram/time for alignment on a uniform dt grid
-        self._S_db: Optional[np.ndarray] = None         # shape (F, T)
-        self._times: Optional[np.ndarray] = None        # shape (T,)
-        self._spec_uniform: Optional[np.ndarray] = None # shape (F, Tu)
-        self._env_dt: float = 0.01  # seconds (common time grid for alignment)
+        # No extra alignment-specific caches
 
         self._build_view()
 
@@ -198,29 +194,7 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
         self._pixmap_item.setTransform(QtGui.QTransform().scale(sx, -sy))
         self._pixmap_item.setPos(self.time_offset, self._ymax_khz)
 
-        # Cache spectrogram and a time-uniform resampling for alignment
-        try:
-            self._S_db = np.array(S_db, dtype=float)
-            self._times = np.array(times, dtype=float)
-            t_raw = self._times if self._times is not None and self._times.size > 0 else np.linspace(0.0, duration, num=self._S_db.shape[1] if self._S_db is not None else 2)
-            if t_raw.size < 2:
-                t_raw = np.array([0.0, max(1e-6, duration)], dtype=float)
-            t_uniform = np.arange(0.0, max(duration, 0.0), self._env_dt, dtype=float)
-            if t_uniform.size == 0:
-                t_uniform = np.array([0.0], dtype=float)
-            if self._S_db is not None and t_raw.size == self._S_db.shape[1]:
-                F = int(self._S_db.shape[0])
-                Tu = int(t_uniform.size)
-                Su = np.empty((F, Tu), dtype=float)
-                for f in range(F):
-                    Su[f, :] = np.interp(t_uniform, t_raw, self._S_db[f, :])
-                self._spec_uniform = Su
-            else:
-                self._spec_uniform = None
-        except Exception:
-            self._S_db = None
-            self._times = None
-            self._spec_uniform = None
+        # (alignment functionality removed)
 
         # Draw syllable overlays
         y0, y1 = self._y_limits_khz()
@@ -649,16 +623,7 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
     def _x_limits_seconds(self) -> Tuple[float, float]:
         return self.x_limits if self.x_limits is not None else (0.0, self._duration)
 
-    # Update the horizontal offset of this row and reposition all artists
-    def set_time_offset(self, new_offset: float):
-        try:
-            self.time_offset = float(new_offset)
-            if isinstance(self._pixmap_item, QtWidgets.QGraphicsPixmapItem):
-                self._pixmap_item.setPos(self.time_offset, self._ymax_khz)
-            for s in self.annotations:
-                self._update_syllable_artists(s)
-        except Exception:
-            pass
+    # (alignment functionality removed)
 
     # Adding syllable helpers
     def _start_new_syllable(self, t0: float):
@@ -935,12 +900,7 @@ class MainWindow(QtWidgets.QMainWindow):
         btn_propose.clicked.connect(self._propose_labels)
         layout.addWidget(btn_propose)
 
-        # Align rows by cross-correlation of spectrogram envelopes
-        layout.addSpacing(6)
-        btn_align = QtWidgets.QPushButton("Align Songs (XCorr)")
-        btn_align.setToolTip("Align all rows horizontally by maximizing cross-correlation of spectrogram energy envelopes.")
-        btn_align.clicked.connect(self._align_by_xcorr)
-        layout.addWidget(btn_align)
+        # (alignment button removed)
 
         layout.addSpacing(8)
         btn_export = QtWidgets.QPushButton("Export CSV…")
@@ -1220,95 +1180,7 @@ class MainWindow(QtWidgets.QMainWindow):
             new_t0 = max(0.0, new_t1 - w)
         self._set_time_window(new_t0, new_t1)
 
-    def _align_by_xcorr(self):
-        # Align by cross-correlation over the full spectrogram (time axis)
-        if not self.rows:
-            return
-        try:
-            # Reference is the first row
-            ref = self.rows[0]
-            if ref._spec_uniform is None or ref._spec_uniform.size == 0:
-                QtWidgets.QMessageBox.warning(self, "Align Songs", "Reference row has no spectrogram data; cannot align.")
-                return
-
-            def _xcorr_fullspec_lag_seconds(A: np.ndarray, B: np.ndarray, dt: float) -> float:
-                # A: (F, Ta), B: (F, Tb). Use sum over frequencies of 1D correlations along time.
-                A = np.asarray(A, dtype=float)
-                B = np.asarray(B, dtype=float)
-                if A.ndim != 2 or B.ndim != 2 or A.shape[0] != B.shape[0]:
-                    return 0.0
-                F, Ta = A.shape
-                _, Tb = B.shape
-                if Ta < 2 or Tb < 2:
-                    return 0.0
-                # Standardize each frequency band over time to reduce DC bias
-                eps = 1e-12
-                A = A - A.mean(axis=1, keepdims=True)
-                B = B - B.mean(axis=1, keepdims=True)
-                A_std = A.std(axis=1, keepdims=True)
-                B_std = B.std(axis=1, keepdims=True)
-                A = A / np.maximum(A_std, eps)
-                B = B / np.maximum(B_std, eps)
-
-                L = Ta + Tb - 1
-                nfft = 1
-                while nfft < L:
-                    nfft <<= 1
-                # Accumulate correlation across frequency
-                C = np.zeros(nfft, dtype=np.float64)
-                for f in range(F):
-                    fa = np.fft.rfft(A[f, :], nfft)
-                    fb = np.fft.rfft(B[f, :], nfft)
-                    cf = np.fft.irfft(fa * np.conj(fb), nfft)
-                    C += cf
-                C = C[:L]
-                # Normalize by overlap length to reduce edge bias
-                lags = np.arange(-(Tb - 1), Ta, dtype=int)
-                overlap = np.where(lags >= 0, np.minimum(Ta, Tb - lags), np.minimum(Ta + lags, Tb))
-                overlap = np.maximum(1, overlap).astype(np.float64)
-                NCC = C / overlap
-                k = int(np.argmax(NCC))
-                lag_samples = k - (Tb - 1)  # same mapping as numpy.correlate full
-                # Shift to apply to B to best match A is -lag
-                return float(-lag_samples) * float(dt)
-
-            dt = float(getattr(self.rows[0], '_env_dt', 0.01))
-            shifts: List[float] = []
-            durations: List[float] = []
-            for idx, row in enumerate(self.rows):
-                durations.append(float(getattr(row, '_duration', 0.0)))
-                if idx == 0:
-                    shifts.append(0.0)
-                    continue
-                if row._spec_uniform is None or row._spec_uniform.size == 0:
-                    shifts.append(0.0)
-                    continue
-                try:
-                    lag_sec = _xcorr_fullspec_lag_seconds(ref._spec_uniform, row._spec_uniform, dt)
-                except Exception:
-                    lag_sec = 0.0
-                shifts.append(lag_sec)
-
-            # Normalize shifts so earliest starts at 0
-            min_shift = min(shifts) if shifts else 0.0
-            norm_shifts = [s - min_shift for s in shifts]
-
-            # Apply offsets
-            for row, off in zip(self.rows, norm_shifts):
-                row.set_time_offset(float(off))
-
-            # Update time window to include full extents after alignment
-            max_end = 0.0
-            for off, dur in zip(norm_shifts, durations):
-                max_end = max(max_end, float(off) + float(dur))
-            self.global_duration = float(max_end)
-            self.global_x_limits = (0.0, float(max_end))
-            self._set_time_window(0.0, float(max_end))
-        except Exception as e:
-            try:
-                QtWidgets.QMessageBox.critical(self, "Align Songs failed", str(e))
-            except Exception:
-                pass
+    # (alignment method removed)
 
     def _pan_right(self):
         w = self._window_size()
