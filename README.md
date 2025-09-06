@@ -9,7 +9,7 @@ Interactive tool to view spectrograms for a folder of WAV files and label syllab
 - Create a fresh conda environment, then install Python packages with pip.
 
 ```bash
-conda create -n song-syllables python -y
+conda create -n song-syllables python git -y
 conda activate song-syllables
 git clone https://github.com/janclemenslab/syllabler.git
 cd syllabler
