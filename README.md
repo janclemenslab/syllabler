@@ -30,7 +30,7 @@ syllabel --songs PATH_TO_SONGS [--annotations PATH_TO_GLOBAL_CSV]
 ## Usage
 
 - Select: Click a colored syllable block to toggle selection.
-- Assign labels: Use "Assign Auto-Name" or "Assign Custom Name…".
+- Assign labels: Use "Assign Auto-Name" or "Assign Custom Name…" or click on syllable name in the syllable list on the right.
 - Propose labels: Click "Propose Labels" to run an automatic labeling algorithm over all files in the songs folder and populate names.
 
 - Edit mode [E]:
