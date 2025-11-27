@@ -169,6 +169,20 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
         # No extra alignment-specific caches
 
         self._build_view()
+        # No visibility filter by default
+        self._visible_names: Optional[Set[str]] = None
+
+    def set_visibility_filter(self, allowed_names: Optional[Set[str]]):
+        self._visible_names = set(allowed_names) if allowed_names is not None else None
+        self._apply_visibility()
+
+    def _apply_visibility(self):
+        filt = self._visible_names
+        for s in self.annotations:
+            show = True if filt is None else (s.name in filt)
+            for item in (s.patch, s.label_artist, s.top_line, s.bottom_line):
+                if isinstance(item, QtWidgets.QGraphicsItem):
+                    item.setVisible(show)
 
     def _build_view(self):
         # Title
@@ -359,6 +373,8 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
                 if isinstance(s.label_artist, QtWidgets.QGraphicsSimpleTextItem):
                     s.label_artist.setText(new_name)
                 changed = True
+        # Update visibility if a filter is active
+        self._apply_visibility()
 
     def refresh_colors(self):
         for s in self.annotations:
@@ -690,6 +706,8 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
         self._update_patch_style(syll)
         self._new_syll = syll
         self.selection_changed.emit()
+        # Respect any active visibility filter
+        self._apply_visibility()
 
     def _update_new_syllable(self, t1: float):
         if self._new_syll is None:
@@ -727,6 +745,8 @@ class SpectrogramRow(QtWidgets.QGraphicsView):
 
 class LegendWidget(QtWidgets.QWidget):
     label_clicked = QtCore.Signal(str)
+    label_right_clicked = QtCore.Signal(str)
+    label_ctrl_right_clicked = QtCore.Signal(str)
 
     def __init__(self, color_map: Dict[str, Tuple[float, float, float]], parent=None):
         super().__init__(parent)
@@ -757,8 +777,6 @@ class LegendWidget(QtWidgets.QWidget):
             y += line_h
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
-        if event.button() != QtCore.Qt.MouseButton.LeftButton:
-            return super().mousePressEvent(event)
         # hit-test by row index
         margin = 10
         line_h = 20
@@ -767,8 +785,17 @@ class LegendWidget(QtWidgets.QWidget):
         if 0 <= idx < len(self._sorted_names):
             name = self._sorted_names[idx]
             if name:
-                self.label_clicked.emit(name)
-                return
+                if event.button() == QtCore.Qt.MouseButton.LeftButton:
+                    self.label_clicked.emit(name)
+                    return
+                if event.button() == QtCore.Qt.MouseButton.RightButton:
+                    mods = event.modifiers() if hasattr(event, 'modifiers') else QtCore.Qt.KeyboardModifier.NoModifier
+                    if mods & QtCore.Qt.KeyboardModifier.ControlModifier:
+                        self.label_ctrl_right_clicked.emit(name)
+                        return
+                    else:
+                        self.label_right_clicked.emit(name)
+                        return
         return super().mousePressEvent(event)
 
 
@@ -784,6 +811,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
 
         self.songs_dir = songs_dir
+        # Reflect the WAV folder path in the window title
+        try:
+            self.setWindowTitle(f"Song Syllable Labeler — {os.path.abspath(self.songs_dir)}")
+        except Exception:
+            pass
         self.global_annotations_csv_path: Optional[str] = global_annotations_csv
         pairs = list_wavs_and_annotations(self.songs_dir)
         if not pairs:
@@ -945,12 +977,21 @@ class MainWindow(QtWidgets.QMainWindow):
 
         layout.addSpacing(12)
         layout.addWidget(QtWidgets.QLabel("Name Colors"))
+        # Visibility controls
+        btn_show_all = QtWidgets.QPushButton("Show All Types")
+        btn_show_all.setToolTip("Clear the visibility filter and show all syllable types")
+        btn_show_all.clicked.connect(lambda: self._apply_visibility_filter(None))
+        layout.addWidget(btn_show_all)
         self.legend = LegendWidget(self.name_colors)
         legend_frame = QtWidgets.QFrame()
         legend_frame.setFrameShape(QtWidgets.QFrame.StyledPanel)
         legend_layout = QtWidgets.QVBoxLayout(legend_frame)
         legend_layout.setContentsMargins(4, 4, 4, 4)
         legend_layout.addWidget(self.legend)
+        # Right-click a name to select all syllables of that type
+        self.legend.label_right_clicked.connect(self._on_legend_label_right_clicked)
+        # Ctrl+Right-click a name to show only that type (toggle)
+        self.legend.label_ctrl_right_clicked.connect(self._on_legend_label_ctrl_right_clicked)
         layout.addWidget(legend_frame, 1)
 
         return panel
@@ -970,6 +1011,24 @@ class MainWindow(QtWidgets.QMainWindow):
             r.clear_selection()
         self._update_selection_count()
         self.legend.label_clicked.connect(self._on_legend_label_clicked)
+
+    def _select_all_by_name(self, name: str):
+        if not name:
+            return
+        any_changed = False
+        for r in self.rows:
+            row_changed = False
+            for s in r.annotations:
+                prev = s.selected
+                s.selected = (s.name == name)
+                if s.selected != prev:
+                    r._update_patch_style(s)
+                    row_changed = True
+            if row_changed:
+                any_changed = True
+        if any_changed:
+            self._update_selection_count()
+
 
     def _setup_shortcuts(self):
         self._shortcuts: List[QtGui.QShortcut] = []
@@ -1015,6 +1074,27 @@ class MainWindow(QtWidgets.QMainWindow):
         if not name:
             return
         self._apply_new_name(name)
+
+    def _on_legend_label_right_clicked(self, name: str):
+        if not name:
+            return
+        self._select_all_by_name(name)
+
+    def _apply_visibility_filter(self, allowed: Optional[Set[str]]):
+        self.visible_names: Optional[Set[str]] = set(allowed) if allowed is not None else None
+        for r in self.rows:
+            r.set_visibility_filter(self.visible_names)
+
+    def _on_legend_label_ctrl_right_clicked(self, name: str):
+        if not name:
+            return
+        current = getattr(self, 'visible_names', None)
+        if current is not None and len(current) == 1 and name in current:
+            # Toggle off filter -> show all
+            self._apply_visibility_filter(None)
+        else:
+            # Show only this name
+            self._apply_visibility_filter({name})
 
     def _propose_labels(self):
         if make_proposals is None:
@@ -1133,6 +1213,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def _toggle_edit_mode(self, enabled: bool):
         for r in self.rows:
             r.set_edit_mode(enabled)
+        # Clear selection when entering edit mode
+        if enabled:
+            self._clear_selection()
 
     # Autoname helper for new syllables
     def _ensure_name_color(self, name: str):
