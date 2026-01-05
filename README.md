@@ -11,7 +11,7 @@ Interactive tool to view spectrograms for a folder of WAV files and label syllab
 ```bash
 conda create -n song-syllabler python=3.13 git uv -y
 conda activate song-syllabler
-uv pip install git@https://github.com/janclemenslab/syllabler.git
+uv pip install git+https://github.com/janclemenslab/syllabler.git
 ```
 
 ### Local install
