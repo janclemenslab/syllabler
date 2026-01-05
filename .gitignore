@@ -1,0 +1,8 @@
+scratch
+res
+.*
+*.json
+__*
+*.h5
+src/syllabel/__pycache__
+src/syllabel.egg-info
