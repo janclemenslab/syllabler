@@ -34,7 +34,7 @@ syllabel --songs PATH_TO_SONGS [--annotations PATH_TO_GLOBAL_CSV]
 
 ## Usage
 
-- Select: Click a colored syllable block to toggle selection.
+- Select: Click a colored syllable block in the spectrogram view to toggle selection.
 - Assign labels: Use "Assign Auto-Name" or "Assign Custom Name…" or click on syllable name in the syllable list on the right.
 - Propose labels: Click "Propose Labels" to run an automatic labeling algorithm over all files in the songs folder and populate names.
 
@@ -45,6 +45,12 @@ syllabel --songs PATH_TO_SONGS [--annotations PATH_TO_GLOBAL_CSV]
   - Right‑click a syllable to delete it.
 - Lasso: Click‑drag horizontally to select multiple; right‑click any selected syllable deletes all selected.
 - Navigation: UP zooms in, DOWN zooms out, LEFT/RIGHT pans time.
+
+Syllables can also be selected
+  - Left-click on a row applies that name to all currently selected syllables.
+  - Right-click on a row selects every syllable with that name across all rows.
+  - Ctrl+right-click on a row toggles a visibility filter to show only that name; clicking again when already filtered clears the filter.
+  - The “Show All Types” button above the list clears any visibility filter so every syllable type is shown again.
 
 ## Annotations
 
